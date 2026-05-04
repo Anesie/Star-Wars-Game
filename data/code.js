@@ -107,7 +107,7 @@ playground.size = playground.DOM.getBoundingClientRect();
 ///////////////////////////////////////////////////////////////
 
 class Sprite {
-    id;             // l'Id du sprite, pour info
+    id;             // l'Id du sprite
     #DOM;           // Objet DOM qui représente le sprite
     #pos;           // Position actuelle du sprite
     #speed;         // La vitesse de déplacement actuelle en pixels par seconde
@@ -279,7 +279,7 @@ let game = {
         r2d2: new Player("R2D2"),
         sprites: [],
         score: 0,
-        time: 60000,
+        time: 180000,
         highScore: 0,
         keys: {},
         
@@ -302,7 +302,7 @@ game.nextLevel = function() {
         playground.DOM.style.backgroundImage = this.levels[this.level].background;
         playground.DOM.style.backgroundSize = "cover";
         
-        // Optional: Add a bonus to time when leveling up
+        // Add a bonus to time when leveling up
         this.time += 10000; 
 
         // Restart all planes to apply new speeds
@@ -313,6 +313,9 @@ game.nextLevel = function() {
 };
 
 game.update = function (tFrame) {
+    // arrêt si le jeu n'est pas lancé 1
+    if (document.getElementById("start-screen").style.display !== "none") return;
+
     let duration = tFrame - this.tFrameLast;
     this.tFrameLast = tFrame;
 
@@ -421,6 +424,7 @@ game.stop = function () {
     document.getElementById("final-score").innerText = "Score final : " + this.score;
 }
 game.init = function () {
+    this.sprites = [];
     // Attend l'initialisation des autres sprites
     let sprite = new Plane("x_wing");
     game.sprites.push(sprite);
@@ -478,22 +482,11 @@ game.init = function () {
 // s'acroche à l'évelment load de window
 window.addEventListener("load", () => {     
     const screen = document.getElementById("start-screen");
-
-    if (!screen) {
-        console.error("start-screen not found in DOM");
-        return;
-    }
-
-    const seen = sessionStorage.getItem("introSeen");
-
-    if (seen) {
-        screen.style.display = "none";
-        game.init();
-        game.start();
-        main(0);
-    } else {
-        screen.style.display = "flex";
-    }})
+    screen.style.display = "flex"; // On force l'affichage pour bloquer game.update[cite: 6]
+    
+    game.init(); 
+    // On ne lance PAS main() ici, c'est startGame qui le fera.
+});
 
 
 
@@ -532,10 +525,15 @@ class Enemy extends Plane {
 }
 
 function startGame() {
-    document.getElementById("start-screen").style.display = "flex";
+    const screen = document.getElementById("start-screen");
+    screen.style.display = "none"; // On cache l'écran
     sessionStorage.setItem("introSeen", "1");
 
-    game.init();
-    game.start();
-    main(0);
+    // RÉGLAGE RAPIDE : On remet le chrono à zéro par rapport à l'instant présent
+    game.tFrameLast = performance.now();
+    game.time = 180000; // 3 minutes
+    
+    game.run = true;
+    game.start(); 
+    main(performance.now()); 
 }

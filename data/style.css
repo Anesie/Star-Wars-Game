@@ -86,3 +86,42 @@ html,body {
   transform: scale(1.1);
   background-color: white;
 }
+
+#start-screen {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  color: white;
+  text-align: center;
+}
+
+#start-screen h1 {
+  margin-bottom: 15px;
+  font-size: 40px;
+}
+
+#start-screen p {
+  margin: 6px 0;
+  font-size: 20px;
+}
+
+#start-button {
+  margin-top: 18px;
+  padding: 12px 22px;
+  background: white;
+  color: black;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+#start-button:hover {
+  background: #ddd;
+}
+

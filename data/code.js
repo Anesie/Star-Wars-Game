@@ -200,11 +200,17 @@ class Plane extends Sprite {
 
     // Démarre l'avion du haut de l'écran 
     start() {
-        // Choisit une position x random
-        let x = playground.size.width * Math.random();
-        this.pos = new Position(x, -this.size.height);
-        this.changeSpeed(3, 203);
-        console.log(this.id, 'start')
+            let x = playground.size.width * Math.random();
+            this.pos = new Position(x, -this.size.height);
+            
+            // Apply level speed multiplier
+            const config = game.levels[game.level];
+            const baseSpeedY = 200; 
+            
+            // Reset current speed and apply new one
+            this.stop(); 
+            this.changeSpeed(3, baseSpeedY * config.speedMult);
+        
     }
 
     // Vrai si le sprite a atteint de bas de l'aire de jeux
@@ -234,15 +240,31 @@ class Plane extends Sprite {
 class Player extends Sprite {
     update(duration) {
         // Calcule le mouvement théorique
-        let newPos = this.pos.move(this.speed, duration);
-
-        // Définit les limites (Rectangle de l'écran)
+        const speed = game.levels[game.level].playerSpeed;
+        let vx = 0;
+        let vy = 0;
+    
+        if (game.keys["ArrowLeft"]) vx -= speed;
+        if (game.keys["ArrowRight"]) vx += speed;
+        if (game.keys["ArrowUp"]) vy -= speed;
+        if (game.keys["ArrowDown"]) vy += speed;
+    
+        // Normalize diagonal movement (optional but better)
+        if (vx !== 0 && vy !== 0) {
+            vx *= 0.707;
+            vy *= 0.707;
+        }
+    
+        let newPos = this.pos.shift(
+            vx * duration / 1000,
+            vy * duration / 1000
+        );
+    
         let minX = 0;
         let minY = 0;
         let maxX = playground.size.width - this.size.width;
         let maxY = playground.size.height - this.size.height;
-
-        // Force la position à rester dans ces limites
+    
         this.pos = new Position(
             limit(minX, newPos.x, maxX),
             limit(minY, newPos.y, maxY)
@@ -251,18 +273,59 @@ class Player extends Sprite {
 }
 
 let game = {
-    run: false,
-    tFrameLast: 0,
-    r2d2: new Player("R2D2"),
-    sprites: [],
-    score: 0,
-    time: 30000 // 1 minute 180000
+        run: false,
+        level: 1,
+        tFrameLast: 0,
+        r2d2: new Player("R2D2"),
+        sprites: [],
+        score: 0,
+        time: 60000,
+        highScore: 0,
+        keys: {},
+        
+        // Level configurations
+        levels: {
+            1: { speedMult: 1.0, background: "url('data/desert_sand.jpg')", scoreTarget: 100, playerSpeed: 250 },
+            2: { speedMult: 1.5, background: "url('data/2ndlevel.jpg')", scoreTarget: 250, playerSpeed: 300 },
+            3: { speedMult: 2.2, background: "url('data/3rdlevel.jpg')", scoreTarget: Infinity, playerSpeed: 350 }
+        }
+    
 };
 
+
+game.nextLevel = function() {
+    this.level++;
+    if (this.levels[this.level]) {
+        console.log("Level " + this.level);
+        
+        // Update Background
+        playground.DOM.style.backgroundImage = this.levels[this.level].background;
+        playground.DOM.style.backgroundSize = "cover";
+        
+        // Optional: Add a bonus to time when leveling up
+        this.time += 10000; 
+
+        // Restart all planes to apply new speeds
+        for (let sprite of this.sprites) {
+            sprite.start();
+        }
+    }
+};
 
 game.update = function (tFrame) {
     let duration = tFrame - this.tFrameLast;
     this.tFrameLast = tFrame;
+
+    if (this.score > this.highScore) {
+        this.highScore = this.score;
+        localStorage.setItem("highScore", this.highScore);
+    }
+
+    // Check for level up
+    let currentConfig = this.levels[this.level];
+    if (this.score >= currentConfig.scoreTarget) {
+        this.nextLevel();
+    }
 
     // move player
     this.r2d2.update(duration);
@@ -284,9 +347,9 @@ game.update = function (tFrame) {
         }
     }
     //mise à jour du score sur l'écran pendant la partie
-    let secondsLeft = Math.max(0, Math.ceil(this.time / 1000));
-    document.getElementById("timer").innerText = "Temps: " + secondsLeft + "s";
-    document.getElementById("score").innerText = "Score: " + this.score;
+    document.getElementById("timer").innerText = `Niveau: ${this.level} | Temps: ${Math.max(0, Math.ceil(this.time / 1000))}s`;
+    document.getElementById("score").innerText =
+    "Score: " + this.score + " | High Score: " + this.highScore;
 
     // timer
     this.time -= duration;
@@ -323,8 +386,13 @@ game.onkeydown = function (key) {
 
 // Installe la lecture des caractères
 window.onkeydown = function (e) {
-    game.onkeydown(e.key);
+    game.keys[e.key] = true;
 }
+
+
+window.onkeyup = function (e) {
+    game.keys[e.key] = false;
+};
 
 // tFrame est le temps d'appel de l'animation passé à main en ms
 function main(tFrame) {
@@ -340,7 +408,7 @@ function main(tFrame) {
 // Démmare le jeu
 game.start = function () {
     // lance tous les sprites
-    for (sprite of this.sprites) {
+    for (let sprite of this.sprites) {
         sprite.start();
     }
 }
@@ -365,12 +433,35 @@ game.init = function () {
 
     sprite = new Plane("obi_wan_starfighter");
     game.sprites.push(sprite);
+    if (this.level === 1) {
+        let vader = new Enemy("darthvader");
+        this.sprites.push(vader);
+        vader.start();
+    }
+    
+    if (this.level === 2) {
+        for (let i = 0; i < 5; i++) {
+            let vader = new Enemy("darthvader");
+            this.sprites.push(vader);
+            vader.start();
+        }
+    }
 
-    //création d'un enemie en utilisant la classe Enemy
-    let vader = new Enemy("darthvader");
-    game.sprites.push(vader);
+        
+    if (this.level === 3) {
+        for (let i = 0; i < 20; i++) {
+            let vader = new Enemy("darthvader");
+            this.sprites.push(vader);
+            vader.start();
+        }
+    }
+
+    this.highScore = parseInt(localStorage.getItem("highScore")) || 0;
 
      playground.size = playground.DOM.getBoundingClientRect();
+     playground.DOM.style.backgroundImage = this.levels[1].background;
+    playground.DOM.style.backgroundSize = "cover";
+
 
     this.r2d2.minX = 0;
     this.r2d2.minY = 0;
@@ -380,14 +471,29 @@ game.init = function () {
     this.run = true;
     this.tFrameLast = 0;
 
-    game.start();
-    main(0); // Début du cycle
 }
 
 // L'initialisation est asynchrone donc il faut attendre
 // Il faut que toutes les images soient chargées donc on
 // s'acroche à l'évelment load de window
-window.addEventListener("load", () => { game.init(); })
+window.addEventListener("load", () => {     
+    const screen = document.getElementById("start-screen");
+
+    if (!screen) {
+        console.error("start-screen not found in DOM");
+        return;
+    }
+
+    const seen = sessionStorage.getItem("introSeen");
+
+    if (seen) {
+        screen.style.display = "none";
+        game.init();
+        game.start();
+        main(0);
+    } else {
+        screen.style.display = "flex";
+    }})
 
 
 
@@ -423,4 +529,13 @@ class Enemy extends Plane {
             this.start();
         }
     }
+}
+
+function startGame() {
+    document.getElementById("start-screen").style.display = "flex";
+    sessionStorage.setItem("introSeen", "1");
+
+    game.init();
+    game.start();
+    main(0);
 }

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
+
 <head>
   <meta charset="utf-8">
   <title>Star War Game</title>
   <link href="style.css" rel="stylesheet" type="text/css">
   <script defer src="code.js"></script>
 </head>
+
 <body>
   <div class="resources">
     <img id="R2D2" src="data/R2D2.png">
@@ -13,13 +15,23 @@
     <img id="anakin_starfighter" src="data/anakin_starfighter.png">
     <img id="naboo_starfighter" src="data/naboo_starfighter.png">
     <img id="obi_wan_starfighter" src="data/obi_wan_starfighter.png">
-    <img id="darthvader" src ="data/darthvader.png">
+    <img id="darthvader" src="data/darthvader.png">
     <img id="" src="data/.png">
 
-   .png
+    .png
   </div>
   <div id="playground">
     <div id="score">Score: 0</div>
+    <!--affichage du score -->
+    <div id="timer">Temps: 180s</div> </div>
+
+    <!--affichage du game over -->
+    <div id="game-over">
+      <h1>GAME OVER</h1>
+      <p id="final-score">Score final : 0</p>
+      <button onclick="window.location.reload()">REJOUER</button>
+  </div>
   </div>
 </body>
+
 </html>

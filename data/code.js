@@ -53,7 +53,7 @@ class Speed {
 
     // Vrai si la vitesse est nulle. 
     isStopped() {
-        return this.#x == 0 && this.#y == 0;   
+        return this.#x == 0 && this.#y == 0;
     }
 
     // Accelère si dx ou dy est positif ou freine si negatif
@@ -118,7 +118,7 @@ class Sprite {
         const DOM = document.getElementById(id);
         // Vérifie qu'il existe
         if (DOM == null) {
-            throw new Error('HTML object '+id+' not found');
+            throw new Error('HTML object ' + id + ' not found');
         }
         // Crée un objet DOM pour l'afficher
         this.#DOM = DOM.cloneNode();
@@ -135,22 +135,25 @@ class Sprite {
 
     };
 
-    getRect(pos = this.pos){
+    getRect(pos = this.pos) {
         return new Rectangle(pos, this.size);
     }
 
     // Place le sprite à une position p donnée
     set pos(p) {
-        // Empeche de sortir de l'aire de jeux
-        let minX = - this.#size.width;
-        let minY = - this.#size.height;
-        let maxX = playground.size.width;
-        let maxY = playground.size.height;
+        // Par défaut, on autorise les sprites à être un peu hors écran (pour les avions)
+        // Mais on peut ajuster ces limites
+        let minX = this.minX ?? -this.#size.width;
+        let minY = this.minY ?? -this.#size.height;
+        let maxX = this.maxX ?? playground.size.width;
+        let maxY = this.maxY ?? playground.size.height;
+
         let pos = new Position(limit(minX, p.x, maxX), limit(minY, p.y, maxY));
         this.#DOM.style.left = pos.x + "px";
         this.#DOM.style.top = pos.y + "px";
         this.#pos = pos;
     };
+
     getRect(pos = this.pos) {
         return new Rectangle(pos, this.size);
     }
@@ -192,7 +195,7 @@ class Plane extends Sprite {
     waitingTime;
     constructor(id) {
         super(id);
-        this.waitingTime=0;
+        this.waitingTime = 0;
     }
 
     // Démarre l'avion du haut de l'écran 
@@ -212,7 +215,7 @@ class Plane extends Sprite {
     update(duration) {
         super.update(duration);
         // Regarde si le sprite a disparu au bas de l'écran
-        if (this.isAtBottom() && ! this.isStopped()) {
+        if (this.isAtBottom() && !this.isStopped()) {
             // Arrete le sprite
             this.stop();
             // Place un temps d'attende avant de redémmarer
@@ -228,15 +231,32 @@ class Plane extends Sprite {
         }
     }
 }
+class Player extends Sprite {
+    update(duration) {
+        // Calcule le mouvement théorique
+        let newPos = this.pos.move(this.speed, duration);
 
+        // Définit les limites (Rectangle de l'écran)
+        let minX = 0;
+        let minY = 0;
+        let maxX = playground.size.width - this.size.width;
+        let maxY = playground.size.height - this.size.height;
+
+        // Force la position à rester dans ces limites
+        this.pos = new Position(
+            limit(minX, newPos.x, maxX),
+            limit(minY, newPos.y, maxY)
+        );
+    }
+}
 
 let game = {
     run: false,
     tFrameLast: 0,
-    r2d2: new Sprite("R2D2"),
+    r2d2: new Player("R2D2"),
     sprites: [],
     score: 0,
-    time: 180000 // 1 minute
+    time: 30000 // 1 minute 180000
 };
 
 
@@ -262,14 +282,19 @@ game.update = function (tFrame) {
             // restart plane
             sprite.start();
         }
-        document.getElementById("score").innerText = "Score: " + this.score;
     }
+    //mise à jour du score sur l'écran pendant la partie
+    let secondsLeft = Math.max(0, Math.ceil(this.time / 1000));
+    document.getElementById("timer").innerText = "Temps: " + secondsLeft + "s";
+    document.getElementById("score").innerText = "Score: " + this.score;
 
     // timer
     this.time -= duration;
     if (this.time <= 0) {
         this.stop();
     }
+
+
 }
 
 // Reaction du jeux à l'enfoncement d'une touche
@@ -315,15 +340,19 @@ function main(tFrame) {
 // Démmare le jeu
 game.start = function () {
     // lance tous les sprites
-    for(sprite of this.sprites) {
+    for (sprite of this.sprites) {
         sprite.start();
     }
 }
 
 game.stop = function () {
     game.run = false;
+    //Affichage d'un message au joueur pour indiquer la fin de la partie
+    let gameOverDiv = document.getElementById("game-over");
+    gameOverDiv.style.display = "flex";
+    document.getElementById("final-score").innerText = "Score final : " + this.score;
 }
-game.init =  function () {
+game.init = function () {
     // Attend l'initialisation des autres sprites
     let sprite = new Plane("x_wing");
     game.sprites.push(sprite);
@@ -337,8 +366,16 @@ game.init =  function () {
     sprite = new Plane("obi_wan_starfighter");
     game.sprites.push(sprite);
 
-    let vader = new Plane("darthvader");
+    //création d'un enemie en utilisant la classe Enemy
+    let vader = new Enemy("darthvader");
     game.sprites.push(vader);
+
+     playground.size = playground.DOM.getBoundingClientRect();
+
+    this.r2d2.minX = 0;
+    this.r2d2.minY = 0;
+    this.r2d2.maxX = playground.size.width - this.r2d2.size.width;
+    this.r2d2.maxY = playground.size.height - this.r2d2.size.height;
 
     this.run = true;
     this.tFrameLast = 0;
@@ -350,7 +387,7 @@ game.init =  function () {
 // L'initialisation est asynchrone donc il faut attendre
 // Il faut que toutes les images soient chargées donc on
 // s'acroche à l'évelment load de window
-window.addEventListener("load", () => {game.init();})
+window.addEventListener("load", () => { game.init(); })
 
 
 
